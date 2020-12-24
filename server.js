@@ -104,9 +104,12 @@ app.post("/newAppointment", function(req, res) {
             message: 'Credentials missing'
         });
     }
+    if (appointment.specialist == "Physician") {
+        appointment.status = 'CONFIRM'
+    }
     const keySql = `select * from roles where apikey = '${apikey}'; `
-    const aptSql = `insert into appointments(fname,lname,email,phone,date,time,specialist,description,doctor,insurance,status)
-    values('${appointment.fname}','${appointment.lname}','${appointment.email}','${appointment.phone}','${appointment.date}','${appointment.time}','${appointment.specialist}','${appointment.description}','${appointment.doctor}','${appointment.insurance}','${appointment.status}');`
+    const aptSql = `insert into appointments(fname,lname,email,phone,date,time,specialist,description,doctor,insurance,status,location,notes)
+    values('${appointment.fname}','${appointment.lname}','${appointment.email}','${appointment.phone}','${appointment.date}','${appointment.time}','${appointment.specialist}','${appointment.description}','${appointment.doctor}','${appointment.insurance}','${appointment.status}','${appointment.location}','${appointment.notes}');`
     connection.query(
         keySql,
         (err, result, feilds) => {
@@ -253,7 +256,7 @@ app.post('/consult', (req, res) => {
 
 })
 
-app.post('/updateStatus', (req, res) => {
+app.post('/history', (req, res) => {
     const { appointment, apikey } = req.body;
     if (!appointment || !apikey) {
         return res.status(400).json({
@@ -262,7 +265,60 @@ app.post('/updateStatus', (req, res) => {
         });
     }
     const keySql = `select * from roles where apikey = '${apikey}'; `
-    const updSql = `update appointments set status = '${appointment.status}' , scan='${appointment.scans}' where aid =${appointment.aid}; `
+    const statSql = `select * from appointments where fname = '${appointment.fname}' and lname = '${appointment.lname}'and email = '${appointment.email}'; `
+    connection.query(
+        keySql,
+        (err, result, feilds) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'server error'
+                })
+            }
+
+            if (result.length == 0) {
+                return res.status(401).json({
+                    error: true,
+                    message: 'apikey invalid'
+                });
+            } else {
+                connection.query(
+                    statSql,
+                    (err, result, feilds) => {
+                        if (err) {
+                            return res.status(500).json({
+                                success: false,
+                                error: 'server error'
+                            })
+                        }
+
+                        if (result.length == 0) {
+                            return res.status(401).json({
+                                error: true,
+                                message: 'No appointment request found'
+                            });
+                        } else {
+                            res.json(result)
+                        }
+
+                    })
+            }
+
+        })
+
+})
+
+app.post('/updateStatus', (req, res) => {
+    const { appointment, apikey } = req.body;
+
+    if (!appointment || !apikey) {
+        return res.status(400).json({
+            error: true,
+            message: 'Credentials missing'
+        });
+    }
+    const keySql = `select * from roles where apikey = '${apikey}'; `
+    const updSql = `update appointments set status = '${appointment.status}', notes='${appointment.notes}', scan='${appointment.scans}' where aid =${appointment.aid}; `
     connection.query(
         keySql,
         (err, result, feilds) => {
